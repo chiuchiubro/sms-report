@@ -184,6 +184,8 @@ dialog h2 { margin: 0; font-size: 1.1rem; }
     <div class="field"><label for="pName">名稱</label><input id="pName" required maxlength="20" placeholder="例：家門口"></div>
     <div class="field"><label for="pCity">縣市</label><select id="pCity"></select></div>
     <div class="field"><label for="pAddr">地址（不含縣市）</label><input id="pAddr" required maxlength="80" placeholder="例：板橋區民生路一段30號"></div>
+    <div class="field"><label for="pVio">違規事實（點這個地點時自動帶入，可留空）</label><input id="pVio" maxlength="50" placeholder="例：汽車於紅線停車"></div>
+    <div class="field"><label for="pExtra">補充備註（可留空）</label><input id="pExtra" maxlength="40" placeholder="例：7-11 門口"></div>
     <div class="row">
       <button type="button" class="btn danger" id="pDel" hidden>刪除</button>
       <button type="button" class="btn" id="pCancel">取消</button>
@@ -234,7 +236,7 @@ async function connectDb() {
     ref.onSnapshot((snap) => {
       clearTimeout(timer); showSync("");
       const remote = snap?.exists ? snap.data()?.items : null;
-      if (Array.isArray(remote)) { state.places = remote; lsSave(remote); render(); }
+      if (Array.isArray(remote)) { state.places = remote; lsSave(remote); render(); if (first && currentPlace()) { applyPlace(currentPlace()); render(); } }
       else if (first && state.places.length) ref.set({ items: state.places }).catch(() => {});
       first = false;
     }, () => { clearTimeout(timer); showSync("雲端地點無法讀取，先用這台裝置上的資料。"); });
@@ -269,7 +271,8 @@ function render() {
     const name = document.createElement("b"); name.textContent = p.name;
     const sm = document.createElement("small"); sm.textContent = p.city + p.addr;
     b.append(name, sm);
-    b.addEventListener("click", () => { state.placeId = p.id; savePrefs(); render(); });
+    if (p.vio || p.extra) { const v = document.createElement("small"); v.textContent = [p.vio, p.extra].filter(Boolean).join("・"); b.append(v); }
+    b.addEventListener("click", () => { state.placeId = p.id; applyPlace(p); savePrefs(); render(); });
     let t; // long-press to edit
     b.addEventListener("pointerdown", () => { t = setTimeout(() => openEditor(p), 550); });
     ["pointerup", "pointerleave", "pointercancel"].forEach((e) => b.addEventListener(e, () => clearTimeout(t)));
@@ -315,6 +318,8 @@ function openEditor(p) {
   $("pName").value = editing?.name ?? (p?.example ? p.name : "");
   $("pCity").value = editing?.city ?? p?.city ?? "新北市";
   $("pAddr").value = editing?.addr ?? (p?.example ? p.addr : "");
+  $("pVio").value = editing ? (editing.vio ?? "") : $("vioText").value;
+  $("pExtra").value = editing ? (editing.extra ?? "") : $("extra").value;
   $("pDel").hidden = !editing;
   $("dlg").showModal();
 }
@@ -328,12 +333,23 @@ $("pDel").addEventListener("click", () => {
 $("placeForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const name = $("pName").value.trim(), addr = $("pAddr").value.trim(), city = $("pCity").value;
+  const vio = $("pVio").value.trim(), extra = $("pExtra").value.trim();
   if (!name || !addr) return;
   const cleanAddr = addr.startsWith(city) ? addr.slice(city.length) : addr;
-  if (editing) Object.assign(editing, { name, city, addr: cleanAddr });
-  else { const p = { id: Date.now().toString(36), name, city, addr: cleanAddr }; state.places = [...state.places, p]; state.placeId = p.id; }
+  if (editing) Object.assign(editing, { name, city, addr: cleanAddr, vio, extra });
+  else { const p = { id: Date.now().toString(36), name, city, addr: cleanAddr, vio, extra }; state.places = [...state.places, p]; state.placeId = p.id; }
+  applyPlace(currentPlace() || {});
   persist(); savePrefs(); $("dlg").close(); render();
 });
+
+// A place can carry its own violation and note; picking it fills them in.
+function applyPlace(p) {
+  if (p.vio) {
+    $("vioText").value = p.vio; state.violation = p.vio;
+    if (/^(汽車|機車)/.test(p.vio)) state.vehicle = p.vio.slice(0, 2);
+  }
+  if (p.vio || p.extra) $("extra").value = p.extra ?? "";
+}
 
 // ---- inputs & actions ----
 $("vCar").addEventListener("click", () => switchVehicle("汽車"));
@@ -368,6 +384,7 @@ const prefs = lsPrefs();
 Object.assign(state, { placeId: prefs.placeId ?? null, vehicle: prefs.vehicle ?? "汽車", violation: prefs.violation ?? "汽車於紅線停車" });
 $("vioText").value = state.violation;
 render();
+if (currentPlace()) { applyPlace(currentPlace()); render(); }
 connectDb();
 </script>
 
