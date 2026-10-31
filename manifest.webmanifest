@@ -1,0 +1,12 @@
+{
+  "name": "常用地點簡訊報案",
+  "short_name": "簡訊報案",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f3f4f7",
+  "theme_color": "#16213a",
+  "icons": [
+    {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"},
+    {"src": "icon-180.png", "sizes": "180x180", "type": "image/png"}
+  ]
+}

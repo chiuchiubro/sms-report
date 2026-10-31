@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#16213a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="簡訊報案">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>常用地點簡訊報案</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one narrow column, thumb-first. Place chips on top, the drafted SMS as a
+   "receipt" card in the middle, a fixed send bar at the bottom. Palette borrows from
+   Taiwanese road signage: ink navy, warning yellow, curb red. */
+:root {
+  --bg: #f3f4f7;
+  --surface: #ffffff;
+  --ink: #16213a;
+  --muted: #5b6478;
+  --line: #d9dde6;
+  --sign: #f5c400;
+  --sign-ink: #1b1b10;
+  --curb: #c8322b;
+  --ok: #1f7a4d;
+  --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1424; --surface: #18203a; --ink: #e8ebf3; --muted: #9aa3b8; --line: #2c3654;
+    --sign: #f5c400; --sign-ink: #1b1b10; --curb: #ff6b62; --ok: #4fc38a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1424; --surface: #18203a; --ink: #e8ebf3; --muted: #9aa3b8; --line: #2c3654;
+  --sign: #f5c400; --sign-ink: #1b1b10; --curb: #ff6b62; --ok: #4fc38a; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap {
+  max-width: 560px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 140px;
+  display: grid; gap: 22px;
+}
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font-size: 1.35rem; font-weight: 900; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+h1 .mark { display: inline-block; background: var(--sign); color: var(--sign-ink); padding: 0 .35em; border-radius: 4px; margin-right: .3em; }
+.sub { color: var(--muted); font-size: .85rem; margin: 2px 0 0; }
+section { display: grid; gap: 10px; min-width: 0; }
+.label { font-size: .78rem; font-weight: 700; letter-spacing: .08em; color: var(--muted); display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--sign); outline-offset: 2px; }
+.linkbtn { background: none; border: 0; color: var(--ink); text-decoration: underline; font-size: .85rem; padding: 4px; letter-spacing: 0; font-weight: 500; }
+
+.places { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.place {
+  text-align: left; background: var(--surface); border: 2px solid var(--line); border-radius: var(--r);
+  padding: 10px 12px; display: grid; gap: 2px; min-width: 0;
+}
+.place b { font-size: 1rem; overflow-wrap: anywhere; }
+.place small { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+.place[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.place .tag { justify-self: start; font-size: .68rem; background: var(--sign); color: var(--sign-ink); border-radius: 3px; padding: 0 5px; font-weight: 700; }
+.empty { color: var(--muted); font-size: .9rem; margin: 0; }
+
+.field { display: grid; gap: 6px; }
+.field input, .field select, .field textarea {
+  width: 100%; background: var(--surface); border: 2px solid var(--line); border-radius: var(--r); padding: 10px 12px;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); outline: none; }
+.plate { font-family: var(--font-mono); font-size: 1.25rem; letter-spacing: .12em; text-transform: uppercase; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .88rem; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.seg { display: inline-flex; border: 2px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 16px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+
+.receipt { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.receipt .to { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px dashed var(--line); flex-wrap: wrap; }
+.receipt .to span { color: var(--muted); font-size: .82rem; }
+.receipt .num { font-family: var(--font-mono); font-weight: 700; font-size: 1.05rem; user-select: all; }
+.receipt .body { padding: 14px; font-size: 1.05rem; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; min-height: 3em; }
+.receipt .body.missing { color: var(--muted); font-style: normal; }
+.receipt .meta { padding: 0 14px 12px; color: var(--muted); font-size: .78rem; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+
+.sendbar {
+  position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--line);
+  padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sendbar .in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+.btn { border: 2px solid var(--ink); background: var(--surface); border-radius: var(--r); padding: 12px 14px; font-weight: 700; text-align: center; text-decoration: none; color: var(--ink); }
+.btn.primary { background: var(--sign); color: var(--sign-ink); border-color: var(--sign-ink); font-size: 1.05rem; }
+.btn[aria-disabled="true"] { opacity: .45; pointer-events: none; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: .9rem; }
+
+dialog { border: 0; border-radius: 14px; padding: 0; width: min(520px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); }
+dialog::backdrop { background: rgba(10, 14, 28, .55); }
+dialog form { padding: 18px; display: grid; gap: 14px; }
+dialog h2 { margin: 0; font-size: 1.1rem; }
+.row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.btn.danger { border-color: var(--curb); color: var(--curb); margin-right: auto; }
+.note { font-size: .8rem; color: var(--muted); margin: 0; }
+.note a { color: inherit; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span class="mark">簡訊</span>報案</h1>
+      <p class="sub">選地點、選違規、填車牌，從你的手機傳給當地警察局</p>
+    </div>
+  </header>
+
+  <section aria-labelledby="l-place">
+    <div class="label"><span id="l-place">常用地點</span><button class="linkbtn" id="addPlace" type="button">＋ 新增地點</button></div>
+    <div class="places" id="places"></div>
+    <p class="note" id="placeHint"></p>
+    <p class="empty" id="syncNote" hidden></p>
+  </section>
+
+  <section aria-labelledby="l-vio">
+    <div class="label"><span id="l-vio">違規事實</span>
+      <span class="seg" role="group" aria-label="車種">
+        <button type="button" id="vCar" aria-pressed="true">汽車</button><button type="button" id="vMoto" aria-pressed="false">機車</button>
+      </span>
+    </div>
+    <div class="chips" id="vioChips"></div>
+    <div class="field">
+      <label for="vioText" class="note">可直接改字（50 字內）</label>
+      <input id="vioText" maxlength="50" autocomplete="off">
+    </div>
+  </section>
+
+  <section aria-labelledby="l-plate">
+    <div class="label"><span id="l-plate">車牌（可留空，多台用空白分開）</span></div>
+    <div class="field">
+      <input id="plate" class="plate" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABC1234">
+    </div>
+    <div class="field">
+      <label for="extra" class="note">補充位置（選填，例如「7-11 門口」）</label>
+      <input id="extra" maxlength="40" autocomplete="off">
+    </div>
+  </section>
+
+  <section aria-labelledby="l-pre">
+    <div class="label"><span id="l-pre">簡訊內容</span></div>
+    <div class="receipt">
+      <div class="to"><span id="station">先選一個地點</span><span class="num" id="num">—</span></div>
+      <div class="body" id="body"></div>
+      <div class="meta"><span id="len"></span><span>號碼來源：各縣市警察局簡訊報案專線</span></div>
+    </div>
+    <p class="note">按「打開簡訊」後，在簡訊 App 核對再按傳送。若沒有跳出簡訊 App，用「複製」把號碼和內容貼到簡訊裡。此工具不會替你送出任何東西。</p>
+  </section>
+</div>
+
+<div class="sendbar">
+  <div class="in">
+    <a class="btn primary" id="send" href="#" aria-disabled="true" target="_top">打開簡訊</a>
+    <button class="btn" type="button" id="copyBody">複製內容</button>
+    <button class="btn" type="button" id="copyNum">複製號碼</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<dialog id="dlg">
+  <form id="placeForm" method="dialog">
+    <h2 id="dlgTitle">新增地點</h2>
+    <div class="field"><label for="pName">名稱</label><input id="pName" required maxlength="20" placeholder="例：家門口"></div>
+    <div class="field"><label for="pCity">縣市</label><select id="pCity"></select></div>
+    <div class="field"><label for="pAddr">地址（不含縣市）</label><input id="pAddr" required maxlength="80" placeholder="例：板橋區民生路一段30號"></div>
+    <div class="row">
+      <button type="button" class="btn danger" id="pDel" hidden>刪除</button>
+      <button type="button" class="btn" id="pCancel">取消</button>
+      <button type="submit" class="btn primary" id="pSave">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+// 受理號碼與違規選項取自 tools.pylot.dev 的開源專案 Willseed/report-via-mobile（MIT License）。
+const STATIONS = {
+  "臺北市": ["臺北市政府警察局", "0911510914"], "新北市": ["新北市政府警察局", "0911510105"],
+  "桃園市": ["桃園市政府警察局", "0917110880"], "臺中市": ["臺中市政府警察局", "0911510915"],
+  "臺南市": ["臺南市政府警察局", "0911510916"], "高雄市": ["高雄市政府警察局", "0911510917"],
+  "基隆市": ["基隆市警察局", "0911510918"], "新竹市": ["新竹市警察局", "0911510919"],
+  "嘉義市": ["嘉義市政府警察局", "0911510920"], "新竹縣": ["新竹縣政府警察局", "0911510921"],
+  "苗栗縣": ["苗栗縣警察局", "0911510922"], "彰化縣": ["彰化縣警察局", "0911510933"],
+  "南投縣": ["南投縣政府警察局", "0911510923"], "雲林縣": ["雲林縣警察局", "0911510924"],
+  "嘉義縣": ["嘉義縣警察局", "0911510925"], "屏東縣": ["屏東縣政府警察局", "0911510926"],
+  "宜蘭縣": ["宜蘭縣政府警察局", "0911510927"], "花蓮縣": ["花蓮縣警察局", "0911510928"],
+  "臺東縣": ["臺東縣警察局", "0911510929"], "澎湖縣": ["澎湖縣政府警察局", "0911510930"],
+  "金門縣": ["金門縣警察局", "0911510931"], "連江縣": ["連江縣警察局", "0911510932"],
+};
+const BOTH = ["於紅線停車", "於黃線停車", "於騎樓停車", "於人行道停車", "於人行道、行人穿越道違規臨停", "並排停車", "於轉彎處停車", "佔用車道影響交通"];
+const CAR_ONLY = ["違法佔用身心障礙者專用停車位", "違法佔用孕婦及育有六歲以下兒童者停車位", "佔用機車停車位", "於十字路口違規臨停", "於公車站牌違規臨停", "於消防通道出入口違規臨停"];
+const EXAMPLE = [{ id: "example", name: "民生公園停車場口", city: "新北市", addr: "板橋區民生路一段30號", example: true }];
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+const $ = (id) => document.getElementById(id);
+const state = { places: [], placeId: null, vehicle: "汽車", violation: "汽車於紅線停車" };
+let store = null; // { save(places) } when the private db is available
+
+// ---- storage: claude.ai private db when hosted as an artifact, else localStorage ----
+const LS_KEY = "sms-report.places";
+function lsLoad() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch { return null; } }
+function lsSave(p) { try { localStorage.setItem(LS_KEY, JSON.stringify(p)); } catch {} }
+function lsPrefs() { try { return JSON.parse(localStorage.getItem("sms-report.prefs") || "{}"); } catch { return {}; } }
+function savePrefs() { try { localStorage.setItem("sms-report.prefs", JSON.stringify({ placeId: state.placeId, vehicle: state.vehicle, violation: state.violation })); } catch {} }
+
+async function connectDb() {
+  if (!window.claude?.use) return;
+  try {
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    if (!db || !user) return;
+    const ref = db.collection("data/users/" + (await user.id())).doc("places");
+    let first = true;
+    const timer = setTimeout(() => showSync("雲端地點讀取逾時，先用這台裝置上的資料。"), 10000);
+    ref.onSnapshot((snap) => {
+      clearTimeout(timer); showSync("");
+      const remote = snap?.exists ? snap.data()?.items : null;
+      if (Array.isArray(remote)) { state.places = remote; lsSave(remote); render(); }
+      else if (first && state.places.length) ref.set({ items: state.places }).catch(() => {});
+      first = false;
+    }, () => { clearTimeout(timer); showSync("雲端地點無法讀取，先用這台裝置上的資料。"); });
+    store = { save: (items) => ref.set({ items }).catch(() => showSync("沒存到雲端，只存在這台裝置。")) };
+  } catch { /* stay local */ }
+}
+function persist() { lsSave(state.places); store?.save(state.places); }
+function showSync(t) { const n = $("syncNote"); n.textContent = t; n.hidden = !t; }
+
+// ---- message ----
+function plates() { return $("plate").value.toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean); }
+function currentPlace() { return shownPlaces().find((p) => p.id === state.placeId) || null; }
+function shownPlaces() { return state.places.length ? state.places : EXAMPLE; }
+function compose() {
+  const p = currentPlace();
+  if (!p) return "";
+  const extra = $("extra").value.trim();
+  const ps = plates();
+  const vio = $("vioText").value.trim();
+  if (!vio) return "";
+  return `${p.city}${p.addr}${extra ? "（" + extra + "）" : ""}，有${vio}${ps.length ? "，車牌號碼：" + ps.join("、") : ""}，請派員處理`;
+}
+
+// ---- render ----
+function render() {
+  const list = shownPlaces();
+  if (!list.some((p) => p.id === state.placeId)) state.placeId = list[0]?.id ?? null;
+  $("places").replaceChildren(...list.map((p) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "place"; b.setAttribute("aria-pressed", String(p.id === state.placeId));
+    if (p.example) { const t = document.createElement("span"); t.className = "tag"; t.textContent = "範例"; b.append(t); }
+    const name = document.createElement("b"); name.textContent = p.name;
+    const sm = document.createElement("small"); sm.textContent = p.city + p.addr;
+    b.append(name, sm);
+    b.addEventListener("click", () => { state.placeId = p.id; savePrefs(); render(); });
+    let t; // long-press to edit
+    b.addEventListener("pointerdown", () => { t = setTimeout(() => openEditor(p), 550); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach((e) => b.addEventListener(e, () => clearTimeout(t)));
+    b.addEventListener("contextmenu", (e) => { e.preventDefault(); openEditor(p); });
+    return b;
+  }));
+  const hint = state.places.length ? "長按地點可以編輯或刪除" : "這是範例地點，按「＋ 新增地點」加入你自己的";
+  $("placeHint").textContent = hint;
+  $("vCar").setAttribute("aria-pressed", String(state.vehicle === "汽車"));
+  $("vMoto").setAttribute("aria-pressed", String(state.vehicle === "機車"));
+  const opts = [...BOTH, ...(state.vehicle === "汽車" ? CAR_ONLY : [])].map((d) => state.vehicle + d);
+  $("vioChips").replaceChildren(...opts.map((v) => {
+    const c = document.createElement("button");
+    c.type = "button"; c.className = "chip"; c.textContent = v.slice(2);
+    c.setAttribute("aria-pressed", String($("vioText").value === v));
+    c.addEventListener("click", () => { $("vioText").value = v; state.violation = v; savePrefs(); update(); render(); });
+    return c;
+  }));
+  update();
+}
+function update() {
+  const p = currentPlace();
+  const st = p && STATIONS[p.city];
+  $("station").textContent = st ? st[0] + "　簡訊報案" : "先選一個地點";
+  $("num").textContent = st ? st[1] : "—";
+  const msg = compose();
+  const body = $("body");
+  body.textContent = msg || "選好地點和違規事實後，這裡會出現要傳的內容。";
+  body.classList.toggle("missing", !msg);
+  $("len").textContent = msg ? `${msg.length} 字` : "";
+  const send = $("send");
+  if (msg && st) {
+    send.href = `sms:${st[1]}${IOS ? "&" : "?"}body=${encodeURIComponent(msg)}`;
+    send.setAttribute("aria-disabled", "false");
+  } else { send.href = "#"; send.setAttribute("aria-disabled", "true"); }
+}
+
+// ---- place editor ----
+let editing = null;
+function openEditor(p) {
+  editing = p && !p.example ? p : null;
+  $("dlgTitle").textContent = editing ? "編輯地點" : "新增地點";
+  $("pName").value = editing?.name ?? (p?.example ? p.name : "");
+  $("pCity").value = editing?.city ?? p?.city ?? "新北市";
+  $("pAddr").value = editing?.addr ?? (p?.example ? p.addr : "");
+  $("pDel").hidden = !editing;
+  $("dlg").showModal();
+}
+$("pCity").replaceChildren(...Object.keys(STATIONS).map((c) => new Option(c, c)));
+$("addPlace").addEventListener("click", () => openEditor(state.places.length ? null : EXAMPLE[0]));
+$("pCancel").addEventListener("click", () => $("dlg").close());
+$("pDel").addEventListener("click", () => {
+  state.places = state.places.filter((x) => x !== editing);
+  persist(); $("dlg").close(); render();
+});
+$("placeForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("pName").value.trim(), addr = $("pAddr").value.trim(), city = $("pCity").value;
+  if (!name || !addr) return;
+  const cleanAddr = addr.startsWith(city) ? addr.slice(city.length) : addr;
+  if (editing) Object.assign(editing, { name, city, addr: cleanAddr });
+  else { const p = { id: Date.now().toString(36), name, city, addr: cleanAddr }; state.places = [...state.places, p]; state.placeId = p.id; }
+  persist(); savePrefs(); $("dlg").close(); render();
+});
+
+// ---- inputs & actions ----
+$("vCar").addEventListener("click", () => switchVehicle("汽車"));
+$("vMoto").addEventListener("click", () => switchVehicle("機車"));
+function switchVehicle(v) {
+  state.vehicle = v;
+  const cur = $("vioText").value;
+  if (/^(汽車|機車)/.test(cur)) {
+    const rest = cur.slice(2);
+    $("vioText").value = v === "機車" && CAR_ONLY.includes(rest) ? "機車" + BOTH[0] : v + rest;
+  }
+  state.violation = $("vioText").value; savePrefs(); render();
+}
+$("vioText").addEventListener("input", () => { state.violation = $("vioText").value; savePrefs(); render(); });
+$("plate").addEventListener("input", (e) => { const el = e.target; const pos = el.selectionStart; el.value = el.value.toUpperCase().replace(/[^A-Z0-9 ,、]/g, ""); el.setSelectionRange(pos, pos); update(); });
+$("extra").addEventListener("input", update);
+$("send").addEventListener("click", (e) => { if ($("send").getAttribute("aria-disabled") === "true") e.preventDefault(); else toast("已打開簡訊，請在簡訊 App 核對後自己按傳送"); });
+
+async function copy(text, label) {
+  try { await navigator.clipboard.writeText(text); toast(label + "已複製"); }
+  catch { const r = document.createRange(); r.selectNodeContents(label === "號碼" ? $("num") : $("body")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("已選取，請長按複製"); }
+}
+$("copyBody").addEventListener("click", () => { const m = compose(); if (m) copy(m, "內容"); });
+$("copyNum").addEventListener("click", () => { const n = $("num").textContent; if (n !== "—") copy(n, "號碼"); });
+let tt;
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(tt); tt = setTimeout(() => (el.hidden = true), 2600); }
+
+// ---- boot ----
+const saved = lsLoad();
+if (Array.isArray(saved)) state.places = saved;
+const prefs = lsPrefs();
+Object.assign(state, { placeId: prefs.placeId ?? null, vehicle: prefs.vehicle ?? "汽車", violation: prefs.violation ?? "汽車於紅線停車" });
+$("vioText").value = state.violation;
+render();
+connectDb();
+</script>
+
+</body>
+</html>
