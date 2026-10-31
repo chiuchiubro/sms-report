@@ -113,6 +113,9 @@ dialog::backdrop { background: rgba(10, 14, 28, .55); }
 dialog form { padding: 18px; display: grid; gap: 14px; }
 dialog h2 { margin: 0; font-size: 1.1rem; }
 .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.saverow { display: flex; flex-wrap: wrap; gap: 8px; }
+.saverow .btn { flex: 1 1 auto; padding: 10px 12px; }
+.btn.ghost { border-color: var(--line); font-weight: 500; }
 .btn.danger { border-color: var(--curb); color: var(--curb); margin-right: auto; }
 .note { font-size: .8rem; color: var(--muted); margin: 0; }
 .note a { color: inherit; }
@@ -156,6 +159,11 @@ dialog h2 { margin: 0; font-size: 1.1rem; }
       <label for="extra" class="note">補充位置（選填，例如「7-11 門口」）</label>
       <input id="extra" maxlength="40" autocomplete="off">
     </div>
+    <div class="saverow">
+      <button type="button" class="btn" id="saveHere">儲存到「<span id="saveName">這個地點</span>」</button>
+      <button type="button" class="btn ghost" id="saveNew">另存成新地點</button>
+    </div>
+    <p class="note" id="saveHint">儲存會記住這個地點的違規事實和補充位置，下次點地點就自動帶入。車牌不會存。</p>
   </section>
 
   <section aria-labelledby="l-pre">
@@ -295,6 +303,7 @@ function render() {
 }
 function update() {
   const p = currentPlace();
+  updateSaveButtons();
   const st = p && STATIONS[p.city];
   $("station").textContent = st ? st[0] + "　簡訊報案" : "先選一個地點";
   $("num").textContent = st ? st[1] : "—";
@@ -352,6 +361,25 @@ function applyPlace(p) {
 }
 
 // ---- inputs & actions ----
+function updateSaveButtons() {
+  const p = currentPlace();
+  const real = p && !p.example;
+  $("saveName").textContent = real ? p.name : "這個地點";
+  $("saveHere").hidden = !real;
+  $("saveNew").textContent = real ? "另存成新地點" : "儲存成我的地點";
+}
+$("saveHere").addEventListener("click", () => {
+  const p = currentPlace();
+  if (!p || p.example) return;
+  p.vio = $("vioText").value.trim(); p.extra = $("extra").value.trim();
+  persist(); render(); toast(`已儲存到「${p.name}」`);
+});
+$("saveNew").addEventListener("click", () => {
+  const p = currentPlace();
+  openEditor(p?.example ? p : null);
+  if (p && !p.example) { $("pCity").value = p.city; $("pAddr").value = p.addr; }
+  $("pName").focus();
+});
 $("vCar").addEventListener("click", () => switchVehicle("汽車"));
 $("vMoto").addEventListener("click", () => switchVehicle("機車"));
 function switchVehicle(v) {
