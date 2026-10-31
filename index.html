@@ -113,6 +113,7 @@ dialog::backdrop { background: rgba(10, 14, 28, .55); }
 dialog form { padding: 18px; display: grid; gap: 14px; }
 dialog h2 { margin: 0; font-size: 1.1rem; }
 .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+#mayor .btn { display: block; }
 .saverow { display: flex; flex-wrap: wrap; gap: 8px; }
 .saverow .btn { flex: 1 1 auto; padding: 10px 12px; }
 .btn.ghost { border-color: var(--line); font-weight: 500; }
@@ -174,6 +175,18 @@ dialog h2 { margin: 0; font-size: 1.1rem; }
       <div class="meta"><span id="len"></span><span>號碼來源：各縣市警察局簡訊報案專線</span></div>
     </div>
     <p class="note">按「打開簡訊」後，在簡訊 App 核對再按傳送。若沒有跳出簡訊 App，用「複製」把號碼和內容貼到簡訊裡。此工具不會替你送出任何東西。</p>
+  </section>
+
+  <section aria-labelledby="l-mayor" id="mayor">
+    <div class="label"><span id="l-mayor">長期違停？寫市長信箱</span></div>
+    <div class="receipt">
+      <div class="to"><span>主旨</span><button type="button" class="linkbtn" id="copySubj">複製主旨</button></div>
+      <div class="body" id="mSubj"></div>
+      <div class="to"><span>內容</span><button type="button" class="linkbtn" id="copyMBody">複製內容</button></div>
+      <div class="body" id="mBody"></div>
+    </div>
+    <a class="btn" id="mLink" href="#" target="_blank" rel="noopener">打開<span id="mCity"></span>市長信箱</a>
+    <p class="note" id="mNote"></p>
   </section>
 </div>
 
@@ -304,6 +317,7 @@ function render() {
 function update() {
   const p = currentPlace();
   updateSaveButtons();
+  updateMayor();
   const st = p && STATIONS[p.city];
   $("station").textContent = st ? st[0] + "　簡訊報案" : "先選一個地點";
   $("num").textContent = st ? st[1] : "—";
@@ -360,6 +374,29 @@ function applyPlace(p) {
   if (p.vio || p.extra) $("extra").value = p.extra ?? "";
 }
 
+// ---- mayor's mailbox: compose text only; the site needs captcha + phone code, so the person submits ----
+const MAILBOX = {
+  "新北市": ["https://service.ntpc.gov.tw/contact/Ac991000.action", "選分類後貼上主旨、內容，案件地址選對行政區。送出前要輸入圖形驗證碼，再輸入手機收到的簡訊驗證碼才會成案。有照片可以一起上傳。"],
+  "臺北市": ["https://hello.gov.taipei/", "臺北 1999 陳情要先用台北通登入。登入後新增陳情，貼上主旨、內容，有照片可以一起上傳。"],
+};
+function updateMayor() {
+  const p = currentPlace();
+  const mb = p && MAILBOX[p.city];
+  $("mayor").hidden = !mb;
+  if (!mb) return;
+  const vio = $("vioText").value.trim() || "違規停車";
+  const extra = $("extra").value.trim();
+  const ps = plates();
+  const where = `${p.city}${p.addr}${extra ? "（" + extra + "）" : ""}`;
+  $("mSubj").textContent = `${p.addr}${extra ? "（" + extra + "）" : ""}經常${vio}，請加強取締`;
+  $("mBody").textContent = `市長您好：\n${where}經常有${vio}的情形${ps.length ? "（車牌號碼：" + ps.join("、") + "）" : ""}，影響行人與車輛通行安全。懇請派員加強巡查與取締，必要時評估設置相關設施。謝謝。`;
+  $("mCity").textContent = p.city;
+  $("mLink").href = mb[0];
+  $("mNote").textContent = mb[1];
+}
+$("copySubj").addEventListener("click", () => copy($("mSubj").textContent, "主旨", $("mSubj")));
+$("copyMBody").addEventListener("click", () => copy($("mBody").textContent, "信箱內容", $("mBody")));
+
 // ---- inputs & actions ----
 function updateSaveButtons() {
   const p = currentPlace();
@@ -396,12 +433,12 @@ $("plate").addEventListener("input", (e) => { const el = e.target; const pos = e
 $("extra").addEventListener("input", update);
 $("send").addEventListener("click", (e) => { if ($("send").getAttribute("aria-disabled") === "true") e.preventDefault(); else toast("已打開簡訊，請在簡訊 App 核對後自己按傳送"); });
 
-async function copy(text, label) {
+async function copy(text, label, el) {
   try { await navigator.clipboard.writeText(text); toast(label + "已複製"); }
-  catch { const r = document.createRange(); r.selectNodeContents(label === "號碼" ? $("num") : $("body")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("已選取，請長按複製"); }
+  catch { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("已選取，請長按複製"); }
 }
-$("copyBody").addEventListener("click", () => { const m = compose(); if (m) copy(m, "內容"); });
-$("copyNum").addEventListener("click", () => { const n = $("num").textContent; if (n !== "—") copy(n, "號碼"); });
+$("copyBody").addEventListener("click", () => { const m = compose(); if (m) copy(m, "內容", $("body")); });
+$("copyNum").addEventListener("click", () => { const n = $("num").textContent; if (n !== "—") copy(n, "號碼", $("num")); });
 let tt;
 function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(tt); tt = setTimeout(() => (el.hidden = true), 2600); }
 
